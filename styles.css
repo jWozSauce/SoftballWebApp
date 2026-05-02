@@ -1,0 +1,563 @@
+/* ---------- Base ---------- */
+:root {
+  --bg: #0b3d2e;
+  --bg-soft: #114a39;
+  --card: #ffffff;
+  --ink: #1a1a1a;
+  --ink-soft: #4a4a4a;
+  --line: #d8d8d8;
+  --accent: #f4a261;
+  --accent-strong: #e76f51;
+  --good: #2a9d8f;
+  --bad: #c0392b;
+  --warn: #d4a017;
+  --shadow: 0 2px 8px rgba(0,0,0,0.15);
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  min-height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+#app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+.hidden { display: none !important; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 10px;
+  border: none;
+  padding: 12px 14px;
+  background: #eee;
+  color: var(--ink);
+  transition: transform 0.05s ease, background 0.15s ease;
+}
+button:active { transform: scale(0.97); }
+button.primary {
+  background: var(--accent);
+  color: #1a1a1a;
+  font-weight: 700;
+}
+button.primary:hover { background: var(--accent-strong); color: white; }
+button.ghost {
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255,255,255,0.4);
+}
+button.ghost.small { padding: 6px 10px; font-size: 13px; }
+button.big { padding: 16px 24px; font-size: 17px; }
+
+input, select {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+/* ---------- Setup ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.topbar h1 {
+  color: white;
+  font-size: 22px;
+  margin: 0;
+}
+.topbar-actions { display: flex; gap: 8px; }
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 700px) {
+  .setup-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.team-setup h2 { margin: 0 0 10px; font-size: 18px; }
+.team-setup .team-name { width: 100%; margin-bottom: 10px; }
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.roster-row {
+  display: grid;
+  grid-template-columns: 50px 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+.roster-row .num {
+  background: var(--bg);
+  color: white;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 700;
+  padding: 4px;
+  font-size: 13px;
+}
+.roster-row .order {
+  background: var(--accent);
+  color: var(--ink);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+.roster-row button {
+  background: transparent;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--bad);
+}
+
+.add-player-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 6px;
+}
+
+.setup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 12px;
+  color: white;
+}
+.innings-label { font-weight: 600; }
+.innings-label select { margin-left: 6px; }
+
+/* ---------- Scoreboard ---------- */
+.scoreboard {
+  background: var(--bg-soft);
+  color: white;
+  border-radius: var(--radius);
+  padding: 8px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+}
+.sb-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 32px 32px 32px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  font-size: 14px;
+}
+.sb-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+.sb-team {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-innings {
+  display: flex;
+  gap: 2px;
+}
+.sb-innings span {
+  flex: 1;
+  text-align: center;
+  background: rgba(255,255,255,0.08);
+  padding: 4px 0;
+  border-radius: 4px;
+  min-width: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.sb-innings span.current {
+  background: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+}
+.sb-rhe {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ---------- Game body ---------- */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: white;
+}
+.inning-status {
+  font-size: 16px;
+  font-weight: 600;
+}
+.dot { opacity: 0.5; margin: 0 6px; }
+.status-actions { display: flex; gap: 6px; }
+
+.batter-card {
+  text-align: center;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+.batter-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+.batter-name {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 2px 0;
+}
+.batter-team { font-size: 13px; color: var(--ink-soft); }
+
+/* ---------- Diamond ---------- */
+.diamond-wrap {
+  background: var(--bg-soft);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.diamond {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto;
+  transform: rotate(0deg);
+}
+.base {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  background: white;
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid #ddd;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.base:active { transform: rotate(45deg) scale(0.92); }
+.base.occupied {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+}
+.base .runner {
+  transform: rotate(-45deg);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.1;
+  max-width: 50px;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.base.first  { right: 8px; top: 50%; transform: translate(0, -50%) rotate(45deg); }
+.base.second { left: 50%; top: 8px; transform: translate(-50%, 0) rotate(45deg); }
+.base.third  { left: 8px; top: 50%; transform: translate(0, -50%) rotate(45deg); }
+.base.home   { left: 50%; bottom: 8px; transform: translate(-50%, 0) rotate(45deg); cursor: default; }
+.base.first.occupied  { transform: translate(0, -50%) rotate(45deg); background: var(--accent); }
+.base.second.occupied { transform: translate(-50%, 0) rotate(45deg); background: var(--accent); }
+.base.third.occupied  { transform: translate(0, -50%) rotate(45deg); background: var(--accent); }
+.diamond-line {
+  position: absolute;
+  inset: 30px;
+  border: 2px dashed rgba(255,255,255,0.25);
+  transform: rotate(45deg);
+}
+.bases-legend {
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+}
+
+/* ---------- Action buttons ---------- */
+.actions { display: flex; flex-direction: column; gap: 12px; }
+.actions-section h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.75);
+}
+.btn-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 6px;
+}
+.play-btn {
+  font-weight: 600;
+  font-size: 14px;
+  padding: 14px 8px;
+  border-radius: 10px;
+}
+.play-btn.hit { background: #2a9d8f; color: white; }
+.play-btn.hit.hr { background: #e76f51; }
+.play-btn.walk { background: #6c8ebf; color: white; }
+.play-btn.err { background: #b56576; color: white; }
+.play-btn.fc { background: #8a7090; color: white; }
+.play-btn.out { background: #4a4a4a; color: white; }
+.play-btn.out.dp { background: #2c2c2c; }
+
+/* ---------- Modals ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  z-index: 50;
+}
+.modal-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 16px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-card.big-modal { max-width: 640px; }
+.modal-card h3 { margin: 0 0 8px; }
+.hint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+.modal-actions .ghost {
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+/* Fielder picker */
+.picker-diamond {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  background: linear-gradient(to bottom, #6abd6a 0%, #8fd28f 60%, #c2a878 60%, #d4b988 100%);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.pos-btn {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%);
+  background: white;
+  border: 2px solid #333;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+.pos-btn small { font-size: 10px; opacity: 0.6; margin-top: 2px; }
+.pos-btn.selected {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+}
+.pos-btn .order-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--accent-strong);
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fielder-sequence {
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 22px;
+  font-weight: 700;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+/* Runner advance modal */
+.runner-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.runner-row:last-child { border-bottom: none; }
+.runner-row .runner-info {
+  font-weight: 600;
+}
+.runner-row .runner-info small {
+  display: block;
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: 12px;
+}
+.runner-choices { display: flex; gap: 4px; }
+.runner-choice {
+  padding: 6px 10px;
+  background: #eee;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.runner-choice.selected {
+  background: var(--accent);
+  color: var(--ink);
+}
+.runner-choice.out.selected {
+  background: var(--bad);
+  color: white;
+}
+
+/* Play log */
+.play-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.log-inning {
+  font-weight: 700;
+  background: var(--bg-soft);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+.log-entry {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  font-size: 14px;
+}
+.log-entry .log-num {
+  font-weight: 700;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.log-entry .log-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--bad);
+  font-weight: 700;
+}
+
+/* Menu modal */
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.menu-item {
+  background: #f5f5f5;
+  text-align: left;
+  padding: 14px;
+  font-weight: 600;
+}
+.menu-item.danger { color: var(--bad); }
+
+/* Box score */
+.box-team {
+  margin-bottom: 16px;
+}
+.box-team h4 {
+  margin: 0 0 8px;
+  background: var(--bg-soft);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.box-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.box-table th, .box-table td {
+  padding: 6px 4px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+.box-table th { background: #f5f5f5; }
+.box-table td:nth-child(2), .box-table th:nth-child(2) {
+  text-align: left;
+}
+
+/* Base play modal choices */
+.base-play-choice {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  margin-bottom: 6px;
+  background: #f5f5f5;
+  font-weight: 600;
+}

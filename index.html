@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b3d2e" />
+<title>Softball Scorebook</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ SETUP SCREEN ============ -->
+  <section id="setup" class="screen">
+    <header class="topbar">
+      <h1>Softball Scorebook</h1>
+      <div class="topbar-actions">
+        <button id="loadGameBtn" class="ghost">Resume</button>
+      </div>
+    </header>
+
+    <div class="setup-grid">
+      <div class="team-setup card" data-team="away">
+        <h2>Away Team</h2>
+        <input type="text" class="team-name" placeholder="Team name" />
+        <div class="roster"></div>
+        <div class="add-player-row">
+          <input type="text" class="new-player-num" placeholder="#" maxlength="3" />
+          <input type="text" class="new-player-name" placeholder="Player name" />
+          <button class="add-player">Add</button>
+        </div>
+      </div>
+
+      <div class="team-setup card" data-team="home">
+        <h2>Home Team</h2>
+        <input type="text" class="team-name" placeholder="Team name" />
+        <div class="roster"></div>
+        <div class="add-player-row">
+          <input type="text" class="new-player-num" placeholder="#" maxlength="3" />
+          <input type="text" class="new-player-name" placeholder="Player name" />
+          <button class="add-player">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-actions">
+      <label class="innings-label">
+        Innings:
+        <select id="totalInnings">
+          <option>5</option>
+          <option>6</option>
+          <option selected>7</option>
+          <option>9</option>
+        </select>
+      </label>
+      <button id="startGameBtn" class="primary big">Start Game</button>
+    </div>
+  </section>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <section id="game" class="screen hidden">
+    <header class="scoreboard">
+      <div class="sb-row sb-header">
+        <span class="sb-team">Team</span>
+        <span class="sb-innings"></span>
+        <span class="sb-rhe"><b>R</b></span>
+        <span class="sb-rhe"><b>H</b></span>
+        <span class="sb-rhe"><b>E</b></span>
+      </div>
+      <div class="sb-row" id="sbAway">
+        <span class="sb-team" id="sbAwayName">Away</span>
+        <span class="sb-innings" id="sbAwayInnings"></span>
+        <span class="sb-rhe" id="sbAwayR">0</span>
+        <span class="sb-rhe" id="sbAwayH">0</span>
+        <span class="sb-rhe" id="sbAwayE">0</span>
+      </div>
+      <div class="sb-row" id="sbHome">
+        <span class="sb-team" id="sbHomeName">Home</span>
+        <span class="sb-innings" id="sbHomeInnings"></span>
+        <span class="sb-rhe" id="sbHomeR">0</span>
+        <span class="sb-rhe" id="sbHomeH">0</span>
+        <span class="sb-rhe" id="sbHomeE">0</span>
+      </div>
+    </header>
+
+    <div class="game-body">
+      <div class="status-bar">
+        <div class="inning-status">
+          <span id="halfInning">Top 1</span>
+          <span class="dot">•</span>
+          <span id="outsDisplay">0 outs</span>
+        </div>
+        <div class="status-actions">
+          <button id="undoBtn" class="ghost small">↶ Undo</button>
+          <button id="logBtn" class="ghost small">Log</button>
+          <button id="menuBtn" class="ghost small">☰</button>
+        </div>
+      </div>
+
+      <div class="batter-card card">
+        <div class="batter-label">At Bat</div>
+        <div class="batter-name" id="batterName">—</div>
+        <div class="batter-team" id="batterTeam"></div>
+      </div>
+
+      <div class="diamond-wrap">
+        <div class="diamond" id="diamond">
+          <div class="base second" data-base="2"><span class="runner"></span></div>
+          <div class="base third" data-base="3"><span class="runner"></span></div>
+          <div class="base first" data-base="1"><span class="runner"></span></div>
+          <div class="base home" data-base="0"></div>
+          <div class="diamond-line"></div>
+        </div>
+        <div class="bases-legend">Tap a base to advance the runner.</div>
+      </div>
+
+      <!-- Primary action buttons -->
+      <div class="actions">
+        <div class="actions-section">
+          <h3>Hit</h3>
+          <div class="btn-row">
+            <button class="play-btn hit" data-play="1B">Single</button>
+            <button class="play-btn hit" data-play="2B">Double</button>
+            <button class="play-btn hit" data-play="3B">Triple</button>
+            <button class="play-btn hit hr" data-play="HR">Home Run</button>
+          </div>
+        </div>
+
+        <div class="actions-section">
+          <h3>On Base (no hit)</h3>
+          <div class="btn-row">
+            <button class="play-btn walk" data-play="BB">Walk</button>
+            <button class="play-btn walk" data-play="HBP">Hit by Pitch</button>
+            <button class="play-btn err" data-play="E">Reach on Error</button>
+            <button class="play-btn fc" data-play="FC">Fielder's Choice</button>
+          </div>
+        </div>
+
+        <div class="actions-section">
+          <h3>Out</h3>
+          <div class="btn-row">
+            <button class="play-btn out" data-play="K">Strikeout</button>
+            <button class="play-btn out" data-play="GO">Groundout</button>
+            <button class="play-btn out" data-play="FO">Flyout</button>
+            <button class="play-btn out" data-play="LO">Lineout</button>
+            <button class="play-btn out" data-play="PO">Popout</button>
+            <button class="play-btn out" data-play="FOUL">Foul Out</button>
+            <button class="play-btn out" data-play="SF">Sac Fly</button>
+            <button class="play-btn out" data-play="SAC">Sac Bunt</button>
+            <button class="play-btn out dp" data-play="DP">Double Play</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FIELDER PICKER MODAL ============ -->
+  <div id="fielderModal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="fielderTitle">Who fielded it?</h3>
+      <p class="hint" id="fielderHint">Tap fielders in order. First tap = who fielded it. Last tap = who recorded the out.</p>
+      <div class="picker-diamond">
+        <button class="pos-btn" data-pos="7" style="--x:15%;--y:18%">LF<small>7</small></button>
+        <button class="pos-btn" data-pos="8" style="--x:50%;--y:8%">CF<small>8</small></button>
+        <button class="pos-btn" data-pos="9" style="--x:85%;--y:18%">RF<small>9</small></button>
+        <button class="pos-btn" data-pos="5" style="--x:25%;--y:42%">3B<small>5</small></button>
+        <button class="pos-btn" data-pos="6" style="--x:42%;--y:38%">SS<small>6</small></button>
+        <button class="pos-btn" data-pos="4" style="--x:62%;--y:38%">2B<small>4</small></button>
+        <button class="pos-btn" data-pos="3" style="--x:78%;--y:42%">1B<small>3</small></button>
+        <button class="pos-btn" data-pos="1" style="--x:50%;--y:55%">P<small>1</small></button>
+        <button class="pos-btn" data-pos="2" style="--x:50%;--y:82%">C<small>2</small></button>
+      </div>
+      <div class="fielder-sequence" id="fielderSequence">—</div>
+      <div class="modal-actions">
+        <button id="fielderClear" class="ghost">Clear</button>
+        <button id="fielderCancel" class="ghost">Cancel</button>
+        <button id="fielderConfirm" class="primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RUNNER ADVANCE MODAL ============ -->
+  <div id="runnerModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Advance Runners</h3>
+      <p class="hint">For each runner, pick the base they ended on (or "OUT").</p>
+      <div id="runnerList"></div>
+      <div class="modal-actions">
+        <button id="runnerCancel" class="ghost">Cancel</button>
+        <button id="runnerConfirm" class="primary">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PLAY LOG MODAL ============ -->
+  <div id="logModal" class="modal hidden">
+    <div class="modal-card big-modal">
+      <h3>Play-by-Play</h3>
+      <div id="playLog" class="play-log"></div>
+      <div class="modal-actions">
+        <button id="logClose" class="primary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MENU MODAL ============ -->
+  <div id="menuModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Menu</h3>
+      <div class="menu-list">
+        <button id="menuBoxScore" class="menu-item">Box Score</button>
+        <button id="menuStealWP" class="menu-item">Stolen Base / Wild Pitch / Passed Ball</button>
+        <button id="menuSubBatter" class="menu-item">Skip / Substitute Batter</button>
+        <button id="menuEndHalf" class="menu-item">End Half-Inning</button>
+        <button id="menuNewGame" class="menu-item danger">New Game (clears save)</button>
+      </div>
+      <div class="modal-actions">
+        <button id="menuClose" class="ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BOX SCORE MODAL ============ -->
+  <div id="boxModal" class="modal hidden">
+    <div class="modal-card big-modal">
+      <h3>Box Score</h3>
+      <div id="boxScoreContent"></div>
+      <div class="modal-actions">
+        <button id="boxClose" class="primary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BASE RUNNER ADVANCE MODAL (for steals/wp/pb) ============ -->
+  <div id="basePlayModal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="basePlayTitle">Base Running Play</h3>
+      <div id="basePlayChoices"></div>
+      <div class="modal-actions">
+        <button id="basePlayCancel" class="ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
