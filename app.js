@@ -18,7 +18,6 @@ function freshState() {
       away: { name: 'Away', players: [] },
       home: { name: 'Home', players: [] }
     },
-    totalInnings: 7,
     inning: 1,
     half: 'top',                       // 'top' or 'bottom'
     outs: 0,
@@ -117,11 +116,6 @@ function initSetupUI() {
     renderRoster(team);
   });
 
-  document.getElementById('totalInnings').addEventListener('change', e => {
-    state.totalInnings = parseInt(e.target.value, 10);
-    save();
-  });
-
   document.getElementById('startGameBtn').addEventListener('click', startGame);
   document.getElementById('loadGameBtn').addEventListener('click', resumeGame);
 }
@@ -173,10 +167,6 @@ function renderRoster(team) {
 }
 
 function startGame() {
-  if (!state.teams.away.players.length || !state.teams.home.players.length) {
-    alert('Add at least one player to each team.');
-    return;
-  }
   state.setupComplete = true;
   save();
   showScreen('game');
@@ -216,15 +206,26 @@ function renderScoreboard() {
   document.getElementById('sbAwayName').textContent = state.teams.away.name;
   document.getElementById('sbHomeName').textContent = state.teams.home.name;
 
-  const inningsCount = Math.max(state.totalInnings, state.innings.length);
+  // Show only innings that have been started; the scoreboard grows as the game does.
+  const inningsCount = Math.max(state.innings.length, state.inning);
   const buildInnings = (team) => {
     let html = '';
     for (let i = 0; i < inningsCount; i++) {
-      const val = state.innings[i] ? state.innings[i][team] : null;
+      const inn = state.innings[i];
+      const val = inn ? inn[team] : null;
       const isCurrent = (i + 1 === state.inning) &&
         ((team === 'away' && state.half === 'top') ||
          (team === 'home' && state.half === 'bottom'));
-      const display = val === null ? '·' : (val === undefined ? '' : val);
+      // For the "away" column in a bottom-half inning, the half is complete.
+      // For the "home" column in a top-half inning, that side hasn't batted yet.
+      let display;
+      if (val === null || val === undefined) {
+        display = '·';
+      } else if (team === 'home' && (i + 1) === state.inning && state.half === 'top') {
+        display = '·';  // home hasn't batted in the current inning yet
+      } else {
+        display = val;
+      }
       html += `<span class="${isCurrent ? 'current' : ''}">${display}</span>`;
     }
     return html;
@@ -249,16 +250,46 @@ function renderStatus() {
 
 function renderBatter() {
   const b = currentBatter();
+  const team = battingTeam();
+  const teamName = state.teams[team].name;
+  const addRow = document.getElementById('batterAddRow');
+  const toggle = document.getElementById('newBatterToggle');
+
   if (!b) {
-    document.getElementById('batterName').textContent = '—';
-    document.getElementById('batterTeam').textContent = '';
+    document.getElementById('batterName').textContent = 'Add next batter';
+    document.getElementById('batterTeam').textContent = teamName;
+    addRow.classList.remove('hidden');
+    toggle.classList.add('hidden');
     return;
   }
-  const team = battingTeam();
+
   const order = (state.battingIndex[team] % state.teams[team].players.length) + 1;
   document.getElementById('batterName').textContent =
     `${order}. ${b.num ? '#' + b.num + ' ' : ''}${b.name}`;
-  document.getElementById('batterTeam').textContent = state.teams[team].name;
+  document.getElementById('batterTeam').textContent = teamName;
+  addRow.classList.add('hidden');
+  toggle.classList.remove('hidden');
+}
+
+function addBatterInline() {
+  const team = battingTeam();
+  const numInput = document.getElementById('newBatterNum');
+  const nameInput = document.getElementById('newBatterName');
+  const num = numInput.value.trim();
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  state.teams[team].players.push({
+    id: makeId(),
+    num: num || '',
+    name: name
+  });
+  // Make this newly-added player the current batter.
+  state.battingIndex[team] = state.teams[team].players.length - 1;
+  numInput.value = '';
+  nameInput.value = '';
+  document.getElementById('batterAddRow').classList.add('hidden');
+  save();
+  renderGame();
 }
 
 function renderBases() {
@@ -286,7 +317,10 @@ function handlePlay(playType) {
   }
   const batter = currentBatter();
   if (!batter) {
-    alert('No batters in lineup.');
+    // Highlight the inline add-batter form; user must add the batter first.
+    const addRow = document.getElementById('batterAddRow');
+    addRow.classList.remove('hidden');
+    document.getElementById('newBatterName').focus();
     return;
   }
 
@@ -888,7 +922,6 @@ function finishHalfAdvance(ctx) {
 
   save();
   renderGame();
-  checkGameOver();
 }
 
 function endHalfInning() {
@@ -906,20 +939,6 @@ function endHalfInning() {
     half: state.half,
     isInningMarker: true
   });
-}
-
-function checkGameOver() {
-  // After regulation innings (totalInnings), home wins if leading; or game continues to extras
-  if (state.inning > state.totalInnings) {
-    // We are in extras; check if home leads after their half OR away leads after bottom
-    // (Simplified) — let user end manually via menu if needed.
-  }
-  if (state.inning === state.totalInnings && state.half === 'bottom' && state.outs === 0
-      && state.teamStats.home.R > state.teamStats.away.R
-      && state.bases[1] === null && state.bases[2] === null && state.bases[3] === null) {
-    // Home leads going into bottom half of last inning -> game over only if they don't bat
-    // We won't auto-end; leave to user.
-  }
 }
 
 // =========================================================
@@ -1206,6 +1225,40 @@ function wireGameButtons() {
       localStorage.removeItem(STORAGE_KEY);
       // Hard reload to avoid duplicate event listeners on the setup screen.
       location.reload();
+    }
+  });
+
+  // Inline add-batter
+  document.getElementById('addBatterBtn').addEventListener('click', addBatterInline);
+  document.getElementById('newBatterName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addBatterInline();
+  });
+  document.getElementById('newBatterToggle').addEventListener('click', () => {
+    document.getElementById('batterAddRow').classList.remove('hidden');
+    document.getElementById('newBatterToggle').classList.add('hidden');
+    document.getElementById('newBatterName').focus();
+  });
+
+  // End game
+  document.getElementById('menuEndGame').addEventListener('click', () => {
+    document.getElementById('menuModal').classList.add('hidden');
+    if (confirm('End the game now?')) {
+      state.gameOver = true;
+      const a = state.teamStats.away.R;
+      const h = state.teamStats.home.R;
+      let result;
+      if (a === h) result = `Final: tied ${a}-${h}`;
+      else if (a > h) result = `Final: ${state.teams.away.name} ${a}, ${state.teams.home.name} ${h}`;
+      else result = `Final: ${state.teams.home.name} ${h}, ${state.teams.away.name} ${a}`;
+      state.log.push({
+        inning: state.inning, half: state.half,
+        code: 'FINAL', text: result, runs: 0,
+        snapshot: JSON.stringify(state),
+        outsAfter: state.outs, isBaseRunningPlay: true
+      });
+      save();
+      alert(result);
+      renderGame();
     }
   });
 

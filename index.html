@@ -44,15 +44,7 @@
     </div>
 
     <div class="setup-actions">
-      <label class="innings-label">
-        Innings:
-        <select id="totalInnings">
-          <option>5</option>
-          <option>6</option>
-          <option selected>7</option>
-          <option>9</option>
-        </select>
-      </label>
+      <p class="setup-hint">You can also leave rosters empty and add players as they come up to bat.</p>
       <button id="startGameBtn" class="primary big">Start Game</button>
     </div>
   </section>
@@ -101,6 +93,12 @@
         <div class="batter-label">At Bat</div>
         <div class="batter-name" id="batterName">—</div>
         <div class="batter-team" id="batterTeam"></div>
+        <div class="batter-add-row hidden" id="batterAddRow">
+          <input type="text" class="new-batter-num" id="newBatterNum" placeholder="#" maxlength="3" />
+          <input type="text" class="new-batter-name" id="newBatterName" placeholder="Player name" />
+          <button class="primary" id="addBatterBtn">Up to Bat</button>
+        </div>
+        <button class="ghost small batter-toggle hidden" id="newBatterToggle">+ Add new batter</button>
       </div>
 
       <div class="diamond-wrap">
@@ -212,6 +210,7 @@
         <button id="menuStealWP" class="menu-item">Stolen Base / Wild Pitch / Passed Ball</button>
         <button id="menuSubBatter" class="menu-item">Skip / Substitute Batter</button>
         <button id="menuEndHalf" class="menu-item">End Half-Inning</button>
+        <button id="menuEndGame" class="menu-item">End Game (final)</button>
         <button id="menuNewGame" class="menu-item danger">New Game (clears save)</button>
       </div>
       <div class="modal-actions">

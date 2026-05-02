@@ -250,6 +250,25 @@ input, select {
   margin: 2px 0;
 }
 .batter-team { font-size: 13px; color: var(--ink-soft); }
+.batter-add-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 6px;
+  margin-top: 10px;
+}
+.batter-toggle {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--ink-soft);
+  border: 1px dashed var(--line);
+  background: transparent;
+}
+.setup-hint {
+  color: rgba(255,255,255,0.75);
+  font-size: 13px;
+  margin: 0 0 8px;
+  flex: 1;
+}
 
 /* ---------- Diamond ---------- */
 .diamond-wrap {
