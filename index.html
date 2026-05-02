@@ -93,12 +93,16 @@
         <div class="batter-label">At Bat</div>
         <div class="batter-name" id="batterName">—</div>
         <div class="batter-team" id="batterTeam"></div>
+        <div class="batter-pick-row hidden" id="batterPickRow">
+          <div class="pick-label">Pick from lineup:</div>
+          <div class="pick-buttons" id="batterPickButtons"></div>
+        </div>
         <div class="batter-add-row hidden" id="batterAddRow">
           <input type="text" class="new-batter-num" id="newBatterNum" placeholder="#" maxlength="3" />
           <input type="text" class="new-batter-name" id="newBatterName" placeholder="Player name" />
           <button class="primary" id="addBatterBtn">Up to Bat</button>
         </div>
-        <button class="ghost small batter-toggle hidden" id="newBatterToggle">+ Add new batter</button>
+        <button class="ghost small batter-toggle hidden" id="newBatterToggle">+ Substitute / new batter</button>
       </div>
 
       <div class="diamond-wrap">
@@ -209,12 +213,25 @@
         <button id="menuBoxScore" class="menu-item">Box Score</button>
         <button id="menuStealWP" class="menu-item">Stolen Base / Wild Pitch / Passed Ball</button>
         <button id="menuSubBatter" class="menu-item">Skip / Substitute Batter</button>
+        <button id="menuRoster" class="menu-item">Edit Rosters</button>
         <button id="menuEndHalf" class="menu-item">End Half-Inning</button>
         <button id="menuEndGame" class="menu-item">End Game (final)</button>
         <button id="menuNewGame" class="menu-item danger">New Game (clears save)</button>
       </div>
       <div class="modal-actions">
         <button id="menuClose" class="ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ROSTER EDIT MODAL ============ -->
+  <div id="rosterModal" class="modal hidden">
+    <div class="modal-card big-modal">
+      <h3>Edit Rosters</h3>
+      <p class="hint">Edit numbers and names anytime. Changes apply immediately.</p>
+      <div id="rosterContent"></div>
+      <div class="modal-actions">
+        <button id="rosterClose" class="primary">Close</button>
       </div>
     </div>
   </div>

@@ -72,10 +72,14 @@ function ensurePlayerStats(id) {
 }
 
 function currentBatter() {
+  // No auto-cycling. If we've gone past the end of the lineup,
+  // return null so the UI prompts to add a new batter or pick
+  // an existing one to continue the cycle.
   const team = battingTeam();
   const players = state.teams[team].players;
   if (!players.length) return null;
-  const idx = state.battingIndex[team] % players.length;
+  const idx = state.battingIndex[team];
+  if (idx >= players.length) return null;
   return players[idx];
 }
 
@@ -254,16 +258,52 @@ function renderBatter() {
   const teamName = state.teams[team].name;
   const addRow = document.getElementById('batterAddRow');
   const toggle = document.getElementById('newBatterToggle');
+  const pickRow = document.getElementById('batterPickRow');
+  const pickButtons = document.getElementById('batterPickButtons');
 
   if (!b) {
-    document.getElementById('batterName').textContent = 'Add next batter';
+    document.getElementById('batterName').textContent = 'Who’s up?';
     document.getElementById('batterTeam').textContent = teamName;
     addRow.classList.remove('hidden');
     toggle.classList.add('hidden');
+
+    const players = state.teams[team].players;
+    if (players.length > 0) {
+      pickRow.classList.remove('hidden');
+      pickButtons.innerHTML = '';
+      const isOnBase = (p) => [1,2,3].some(b => state.bases[b] === p.id);
+
+      // Suggest the next eligible (not on-base) player in cycle order.
+      const startIdx = state.battingIndex[team] % players.length;
+      let suggestedIdx = -1;
+      for (let i = 0; i < players.length; i++) {
+        const idx = (startIdx + i) % players.length;
+        if (!isOnBase(players[idx])) { suggestedIdx = idx; break; }
+      }
+
+      players.forEach((p, i) => {
+        const onBase = isOnBase(p);
+        const btn = document.createElement('button');
+        btn.className = 'pick-btn' + (i === suggestedIdx ? ' suggested' : '');
+        btn.textContent = `${i + 1}. ${p.num ? '#' + p.num + ' ' : ''}${p.name}` +
+          (onBase ? ' (on base)' : '');
+        btn.disabled = onBase;
+        btn.addEventListener('click', () => {
+          if (onBase) return;
+          state.battingIndex[team] = i;
+          save();
+          renderGame();
+        });
+        pickButtons.appendChild(btn);
+      });
+    } else {
+      pickRow.classList.add('hidden');
+    }
     return;
   }
 
-  const order = (state.battingIndex[team] % state.teams[team].players.length) + 1;
+  pickRow.classList.add('hidden');
+  const order = state.battingIndex[team] + 1;
   document.getElementById('batterName').textContent =
     `${order}. ${b.num ? '#' + b.num + ' ' : ''}${b.name}`;
   document.getElementById('batterTeam').textContent = teamName;
@@ -1124,6 +1164,144 @@ function renderBoxScore() {
 }
 
 // =========================================================
+// Roster edit modal
+// =========================================================
+function renderRosterModal() {
+  const container = document.getElementById('rosterContent');
+  container.innerHTML = '';
+
+  for (const team of ['away', 'home']) {
+    const div = document.createElement('div');
+    div.className = 'roster-team';
+
+    // Team name editable header
+    const h4 = document.createElement('h4');
+    const teamNameInput = document.createElement('input');
+    teamNameInput.className = 'team-name-edit';
+    teamNameInput.type = 'text';
+    teamNameInput.value = state.teams[team].name;
+    teamNameInput.placeholder = team === 'away' ? 'Away' : 'Home';
+    teamNameInput.addEventListener('input', () => {
+      state.teams[team].name = teamNameInput.value.trim() || (team === 'away' ? 'Away' : 'Home');
+      save();
+      renderScoreboard();
+      renderBatter();
+    });
+    h4.appendChild(teamNameInput);
+    div.appendChild(h4);
+
+    // Players list
+    const list = document.createElement('div');
+    state.teams[team].players.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'roster-edit-row';
+
+      const orderSpan = document.createElement('span');
+      orderSpan.className = 'order-num';
+      orderSpan.textContent = (i + 1) + '.';
+      row.appendChild(orderSpan);
+
+      const numIn = document.createElement('input');
+      numIn.type = 'text';
+      numIn.className = 'ed-num';
+      numIn.placeholder = '#';
+      numIn.maxLength = 3;
+      numIn.value = p.num || '';
+      numIn.addEventListener('input', () => {
+        p.num = numIn.value.trim();
+        save();
+        renderBatter();
+      });
+      row.appendChild(numIn);
+
+      const nameIn = document.createElement('input');
+      nameIn.type = 'text';
+      nameIn.className = 'ed-name';
+      nameIn.placeholder = 'Name';
+      nameIn.value = p.name;
+      nameIn.addEventListener('input', () => {
+        const v = nameIn.value.trim();
+        if (v) p.name = v;
+        save();
+        renderBatter();
+        renderBases();
+      });
+      row.appendChild(nameIn);
+
+      const upBtn = document.createElement('button');
+      upBtn.className = 'ed-btn';
+      upBtn.textContent = '↑';
+      upBtn.title = 'Move up in lineup';
+      upBtn.addEventListener('click', () => {
+        if (i === 0) return;
+        const arr = state.teams[team].players;
+        [arr[i-1], arr[i]] = [arr[i], arr[i-1]];
+        save();
+        renderRosterModal();
+        renderGame();
+      });
+      row.appendChild(upBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'ed-btn del';
+      delBtn.textContent = '✕';
+      delBtn.title = 'Remove from roster';
+      delBtn.addEventListener('click', () => {
+        const onBase = [1,2,3].some(b => state.bases[b] === p.id);
+        if (onBase) { alert('Player is currently on base. Resolve their play first.'); return; }
+        if (!confirm(`Remove ${p.name} from the roster? Their stats will be kept in the box score.`)) return;
+        state.teams[team].players.splice(i, 1);
+        // Rebuild battingIndex if needed
+        if (state.battingIndex[team] > state.teams[team].players.length) {
+          state.battingIndex[team] = state.teams[team].players.length;
+        }
+        save();
+        renderRosterModal();
+        renderGame();
+      });
+      row.appendChild(delBtn);
+
+      list.appendChild(row);
+    });
+    div.appendChild(list);
+
+    // Add new player row
+    const addRow = document.createElement('div');
+    addRow.className = 'roster-add-row';
+    const addNum = document.createElement('input');
+    addNum.type = 'text';
+    addNum.placeholder = '#';
+    addNum.maxLength = 3;
+    addRow.appendChild(addNum);
+    const addName = document.createElement('input');
+    addName.type = 'text';
+    addName.placeholder = 'Add player';
+    addRow.appendChild(addName);
+    const addBtn = document.createElement('button');
+    addBtn.className = 'primary';
+    addBtn.textContent = 'Add';
+    const doAdd = () => {
+      const name = addName.value.trim();
+      if (!name) { addName.focus(); return; }
+      state.teams[team].players.push({
+        id: makeId(),
+        num: addNum.value.trim(),
+        name: name
+      });
+      save();
+      renderRosterModal();
+      renderGame();
+    };
+    addBtn.addEventListener('click', doAdd);
+    addName.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+    addRow.appendChild(addBtn);
+    div.appendChild(addRow);
+
+    container.appendChild(div);
+  }
+}
+
+// =========================================================
 // Wiring & init
 // =========================================================
 function wireGameButtons() {
@@ -1155,6 +1333,15 @@ function wireGameButtons() {
   });
   document.getElementById('boxClose').addEventListener('click', () => {
     document.getElementById('boxModal').classList.add('hidden');
+  });
+
+  document.getElementById('menuRoster').addEventListener('click', () => {
+    document.getElementById('menuModal').classList.add('hidden');
+    renderRosterModal();
+    document.getElementById('rosterModal').classList.remove('hidden');
+  });
+  document.getElementById('rosterClose').addEventListener('click', () => {
+    document.getElementById('rosterModal').classList.add('hidden');
   });
 
   document.getElementById('menuStealWP').addEventListener('click', () => {

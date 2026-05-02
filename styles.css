@@ -256,6 +256,33 @@ input, select {
   gap: 6px;
   margin-top: 10px;
 }
+.batter-pick-row {
+  margin-top: 10px;
+  text-align: left;
+}
+.pick-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.pick-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pick-btn {
+  background: #f0f0f0;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 10px;
+}
+.pick-btn.suggested {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+}
 .batter-toggle {
   display: inline-block;
   margin-top: 8px;
@@ -543,6 +570,59 @@ input, select {
   font-weight: 600;
 }
 .menu-item.danger { color: var(--bad); }
+
+/* Roster editor */
+.roster-team {
+  margin-bottom: 16px;
+}
+.roster-team h4 {
+  margin: 0 0 8px;
+  background: var(--bg-soft);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.roster-team h4 input.team-name-edit {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  padding: 4px 8px;
+  width: 100%;
+}
+.roster-edit-row {
+  display: grid;
+  grid-template-columns: 24px 60px 1fr 32px 32px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 0;
+}
+.roster-edit-row .order-num {
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-align: center;
+  font-size: 13px;
+}
+.roster-edit-row .ed-num,
+.roster-edit-row .ed-name {
+  font-size: 14px;
+  padding: 6px;
+}
+.roster-edit-row .ed-btn {
+  padding: 6px;
+  font-size: 13px;
+  background: #f0f0f0;
+}
+.roster-edit-row .ed-btn.del { color: var(--bad); }
+.roster-add-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
 
 /* Box score */
 .box-team {
