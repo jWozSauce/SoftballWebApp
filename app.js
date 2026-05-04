@@ -8,6 +8,7 @@ const POSITIONS = {
 };
 
 const STORAGE_KEY = 'softball.scorebook.v1';
+const HISTORY_KEY = 'softball.scorebook.history.v1';
 
 // ---------- State ----------
 let state = null;
@@ -46,6 +47,33 @@ function load() {
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (e) { return null; }
+}
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) { return []; }
+}
+function saveHistory(arr) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr)); }
+  catch (e) { console.warn('history save failed', e); }
+}
+function archiveCurrentGame() {
+  if (!state.log.length) return false;
+  const arr = loadHistory();
+  arr.unshift({
+    id: 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    endedAt: new Date().toISOString(),
+    awayName: state.teams.away.name,
+    homeName: state.teams.home.name,
+    awayR: state.teamStats.away.R,
+    homeR: state.teamStats.home.R,
+    state: JSON.parse(JSON.stringify(state))
+  });
+  saveHistory(arr);
+  return true;
 }
 
 // ---------- Helpers ----------
@@ -1164,6 +1192,150 @@ function renderBoxScore() {
 }
 
 // =========================================================
+// Past Games (history)
+// =========================================================
+function renderHistoryList() {
+  const container = document.getElementById('historyContent');
+  const list = loadHistory();
+  if (!list.length) {
+    container.innerHTML = '<p class="hint">No completed games saved yet. Tap End Game in a game to save it here.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  list.forEach(g => {
+    const row = document.createElement('div');
+    row.className = 'hist-row';
+    const date = new Date(g.endedAt);
+    const dateStr = date.toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+    const teamA = g.awayName || (g.state && g.state.teams.away.name) || 'Away';
+    const teamH = g.homeName || (g.state && g.state.teams.home.name) || 'Home';
+    const aR = g.awayR != null ? g.awayR : (g.state && g.state.teamStats.away.R) || 0;
+    const hR = g.homeR != null ? g.homeR : (g.state && g.state.teamStats.home.R) || 0;
+    const info = document.createElement('div');
+    info.className = 'hist-info';
+    info.innerHTML = `
+      <div class="hist-teams">${escapeHtml(teamA)} <b>${aR}</b> @ ${escapeHtml(teamH)} <b>${hR}</b></div>
+      <div class="hist-date">${escapeHtml(dateStr)}</div>
+    `;
+    const actions = document.createElement('div');
+    actions.className = 'hist-actions';
+    const viewBtn = document.createElement('button');
+    viewBtn.className = 'primary';
+    viewBtn.textContent = 'View';
+    viewBtn.addEventListener('click', () => {
+      renderArchivedDetail(g);
+      document.getElementById('historyModal').classList.add('hidden');
+      document.getElementById('historyDetailModal').classList.remove('hidden');
+    });
+    const delBtn = document.createElement('button');
+    delBtn.className = 'hist-del';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete from history';
+    delBtn.addEventListener('click', () => {
+      if (!confirm('Delete this game from history? This cannot be undone.')) return;
+      const arr = loadHistory();
+      const idx = arr.findIndex(x => x.id === g.id);
+      if (idx >= 0) {
+        arr.splice(idx, 1);
+        saveHistory(arr);
+        renderHistoryList();
+      }
+    });
+    actions.appendChild(viewBtn);
+    actions.appendChild(delBtn);
+    row.appendChild(info);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+}
+
+function renderArchivedDetail(entry) {
+  const snap = entry.state;
+  const container = document.getElementById('historyDetailContent');
+
+  const date = new Date(entry.endedAt);
+  const aR = snap.teamStats.away.R, hR = snap.teamStats.home.R;
+  const aName = snap.teams.away.name, hName = snap.teams.home.name;
+
+  let result;
+  if (aR === hR) result = `Tied ${aR}-${hR}`;
+  else if (aR > hR) result = `${aName} won ${aR}-${hR}`;
+  else result = `${hName} won ${hR}-${aR}`;
+
+  document.getElementById('historyDetailTitle').textContent = result;
+
+  let html = `<div class="hist-title">${escapeHtml(date.toLocaleString())}</div>`;
+
+  // Final score panel
+  html += `<div class="hist-final">
+    <div>${escapeHtml(aName)}<br><b>${aR}</b></div>
+    <div>${escapeHtml(hName)}<br><b>${hR}</b></div>
+  </div>`;
+
+  // Inning-by-inning line score
+  html += '<table class="hist-line"><thead><tr><th></th>';
+  for (let i = 0; i < snap.innings.length; i++) html += `<th>${i+1}</th>`;
+  html += '<th>R</th><th>H</th><th>E</th></tr></thead><tbody>';
+  for (const team of ['away', 'home']) {
+    html += `<tr><td>${escapeHtml(snap.teams[team].name)}</td>`;
+    snap.innings.forEach(inn => {
+      const v = inn[team];
+      html += `<td>${v != null ? v : '·'}</td>`;
+    });
+    const t = snap.teamStats[team];
+    html += `<td><b>${t.R}</b></td><td>${t.H}</td><td>${t.E}</td></tr>`;
+  }
+  html += '</tbody></table>';
+
+  // Box score per team
+  for (const team of ['away', 'home']) {
+    html += `<div class="box-team"><h4>${escapeHtml(snap.teams[team].name)}</h4>`;
+    html += `<table class="box-table"><thead><tr>
+      <th>#</th><th>Player</th><th>PA</th><th>AB</th><th>R</th><th>H</th>
+      <th>RBI</th><th>BB</th><th>SO</th><th>SB</th>
+    </tr></thead><tbody>`;
+    snap.teams[team].players.forEach(p => {
+      const s = (snap.playerStats && snap.playerStats[p.id]) || {};
+      html += `<tr>
+        <td>${escapeHtml(p.num || '–')}</td>
+        <td>${escapeHtml(p.name)}</td>
+        <td>${s.PA||0}</td><td>${s.AB||0}</td>
+        <td>${s.R||0}</td><td>${s.H||0}</td>
+        <td>${s.RBI||0}</td><td>${s.BB||0}</td>
+        <td>${s.SO||0}</td><td>${s.SB||0}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // Play log
+  html += '<h4>Play-by-Play</h4><div class="play-log">';
+  let lastInningHalf = '';
+  let counter = 0;
+  (snap.log || []).forEach(e => {
+    if (e.isInningMarker) return;
+    const ih = `${e.half === 'top' ? 'Top' : 'Bot'} ${e.inning}`;
+    if (ih !== lastInningHalf) {
+      html += `<div class="log-inning">${escapeHtml(ih)}</div>`;
+      lastInningHalf = ih;
+      counter = 0;
+    }
+    counter++;
+    html += `<div class="log-entry">
+      <span class="log-num">${counter}</span>
+      <span>${escapeHtml(e.text || '')}${e.runs ? ` <b>(${e.runs} R)</b>` : ''}</span>
+      <span class="log-code">${escapeHtml(e.code || '')}</span>
+    </div>`;
+  });
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+// =========================================================
 // Roster edit modal
 // =========================================================
 function renderRosterModal() {
@@ -1344,6 +1516,25 @@ function wireGameButtons() {
     document.getElementById('rosterModal').classList.add('hidden');
   });
 
+  // History
+  const openHistory = () => {
+    renderHistoryList();
+    document.getElementById('menuModal').classList.add('hidden');
+    document.getElementById('historyModal').classList.remove('hidden');
+  };
+  document.getElementById('menuHistory').addEventListener('click', openHistory);
+  document.getElementById('setupHistoryBtn').addEventListener('click', openHistory);
+  document.getElementById('historyClose').addEventListener('click', () => {
+    document.getElementById('historyModal').classList.add('hidden');
+  });
+  document.getElementById('historyDetailClose').addEventListener('click', () => {
+    document.getElementById('historyDetailModal').classList.add('hidden');
+  });
+  document.getElementById('historyDetailBack').addEventListener('click', () => {
+    document.getElementById('historyDetailModal').classList.add('hidden');
+    document.getElementById('historyModal').classList.remove('hidden');
+  });
+
   document.getElementById('menuStealWP').addEventListener('click', () => {
     document.getElementById('menuModal').classList.add('hidden');
     // Sub-menu: pick kind
@@ -1408,11 +1599,17 @@ function wireGameButtons() {
   });
 
   document.getElementById('menuNewGame').addEventListener('click', () => {
-    if (confirm('Start a new game? This clears the saved game.')) {
-      localStorage.removeItem(STORAGE_KEY);
-      // Hard reload to avoid duplicate event listeners on the setup screen.
-      location.reload();
+    const hasData = state.log && state.log.length > 0;
+    if (hasData) {
+      const archive = confirm(
+        'Save this game to Past Games before starting a new one?\n\n' +
+        'OK = save & start new game\nCancel = don\'t save (you can still cancel the next prompt)'
+      );
+      if (archive) archiveCurrentGame();
     }
+    if (!confirm('Start a new game now? Current game will be cleared.')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
   });
 
   // Inline add-batter
@@ -1444,7 +1641,8 @@ function wireGameButtons() {
         outsAfter: state.outs, isBaseRunningPlay: true
       });
       save();
-      alert(result);
+      archiveCurrentGame();
+      alert(result + '\n\nSaved to Past Games.');
       renderGame();
     }
   });

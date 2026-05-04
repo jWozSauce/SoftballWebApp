@@ -624,6 +624,58 @@ input, select {
   border-top: 1px dashed var(--line);
 }
 
+/* History */
+.hist-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.hist-info { flex: 1; min-width: 0; }
+.hist-teams { font-weight: 600; }
+.hist-date { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.hist-actions { display: flex; gap: 6px; }
+.hist-actions button { padding: 8px 12px; font-size: 13px; }
+.hist-actions .hist-del {
+  background: transparent;
+  color: var(--bad);
+  border: 1px solid var(--line);
+}
+.hist-final {
+  display: flex;
+  justify-content: space-around;
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.hist-final b { font-size: 22px; }
+.hist-line {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+.hist-line th, .hist-line td {
+  padding: 6px 4px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+.hist-line th { background: #f5f5f5; }
+.hist-line td:first-child, .hist-line th:first-child {
+  text-align: left;
+  font-weight: 600;
+}
+.hist-title {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
 /* Box score */
 .box-team {
   margin-bottom: 16px;
