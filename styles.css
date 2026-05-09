@@ -231,7 +231,29 @@ input, select {
   font-weight: 600;
 }
 .dot { opacity: 0.5; margin: 0 6px; }
-.status-actions { display: flex; gap: 6px; }
+.status-actions { display: flex; gap: 6px; align-items: center; }
+.save-indicator {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.save-indicator.ok {
+  background: rgba(42, 157, 143, 0.25);
+  color: #b6f1e8;
+  border: 1px solid rgba(42, 157, 143, 0.5);
+}
+.save-indicator.err {
+  background: rgba(192, 57, 43, 0.3);
+  color: #ffd9d4;
+  border: 1px solid rgba(192, 57, 43, 0.6);
+  animation: pulse-err 1.5s ease-in-out infinite;
+}
+@keyframes pulse-err {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
 
 .batter-card {
   text-align: center;

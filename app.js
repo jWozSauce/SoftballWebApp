@@ -37,9 +37,50 @@ function freshState() {
 }
 
 // ---------- Persistence ----------
+let lastSaveOk = true;
+let inProgressPlay = false;       // a play is mid-flight (modal open, awaiting input)
+
 function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch (e) { console.warn('save failed', e); }
+  // Skip while a play is in flight — the in-memory state is partially
+  // mutated, and we don't want to overwrite the pre-play snapshot on disk.
+  if (!state || inProgressPlay) return;
+  writeStateToStorage(state);
+}
+
+function writeStateToStorage(s) {
+  try {
+    const data = JSON.stringify(s);
+    localStorage.setItem(STORAGE_KEY, data);
+    const verify = localStorage.getItem(STORAGE_KEY);
+    if (verify !== data) throw new Error('Save verification mismatch');
+    lastSaveOk = true;
+    showSaveIndicator(true);
+  } catch (e) {
+    console.error('save failed', e);
+    lastSaveOk = false;
+    showSaveIndicator(false, e && e.message);
+  }
+}
+
+function persistPrePlaySnapshot(snapshot) {
+  // Bypasses the inProgressPlay guard. Used to lock in the
+  // pre-play state at the moment a play begins.
+  try { localStorage.setItem(STORAGE_KEY, snapshot); }
+  catch (e) { console.error('snapshot write failed', e); }
+}
+
+function showSaveIndicator(ok, errMsg) {
+  const el = document.getElementById('saveIndicator');
+  if (!el) return;
+  if (ok) {
+    el.textContent = '✓ Saved';
+    el.className = 'save-indicator ok';
+    el.title = 'Last save: ' + new Date().toLocaleTimeString();
+  } else {
+    el.textContent = '⚠ Save failed';
+    el.className = 'save-indicator err';
+    el.title = errMsg || 'localStorage write failed';
+  }
 }
 function load() {
   try {
@@ -203,6 +244,7 @@ function startGame() {
   save();
   showScreen('game');
   renderGame();
+  acquireWakeLock();
 }
 
 function resumeGame() {
@@ -211,6 +253,7 @@ function resumeGame() {
     state = saved;
     showScreen('game');
     renderGame();
+    acquireWakeLock();
   } else {
     alert('No saved game in progress. Finish setup and tap Start Game.');
   }
@@ -385,28 +428,37 @@ function handlePlay(playType) {
   }
   const batter = currentBatter();
   if (!batter) {
-    // Highlight the inline add-batter form; user must add the batter first.
     const addRow = document.getElementById('batterAddRow');
     addRow.classList.remove('hidden');
     document.getElementById('newBatterName').focus();
     return;
   }
 
-  // For plays that need fielder selection
+  // Snapshot the state right now and write it to disk. If the user
+  // refreshes at any point before this play finishes, they'll restore
+  // to this pre-play state — losing only the current at-bat, never
+  // the rest of the inning.
+  const prePlaySnapshot = JSON.stringify(state);
+  inProgressPlay = true;
+  persistPrePlaySnapshot(prePlaySnapshot);
+
   const needsFielder = ['GO', 'FO', 'LO', 'PO', 'FOUL', 'SF', 'SAC', 'DP', 'E', 'FC'].includes(playType);
 
   if (needsFielder) {
     openFielderPicker(playType, (fielders) => {
-      processPlay(playType, batter, fielders);
+      processPlay(playType, batter, fielders, prePlaySnapshot);
+    }, () => {
+      // Cancelled — drop the in-progress flag, no state change.
+      inProgressPlay = false;
     });
   } else {
-    processPlay(playType, batter, []);
+    processPlay(playType, batter, [], prePlaySnapshot);
   }
 }
 
-function processPlay(playType, batter, fielders) {
-  // Take a snapshot for undo BEFORE any mutation happens.
-  const snapshot = JSON.stringify(state);
+function processPlay(playType, batter, fielders, prePlaySnapshot) {
+  // The caller (handlePlay) already snapshotted before any mutation.
+  const snapshot = prePlaySnapshot || JSON.stringify(state);
 
   const ctx = {
     playType,
@@ -418,8 +470,8 @@ function processPlay(playType, batter, fielders) {
     description: '',
     isHit: false,
     isAB: true,
-    isOutOnPlay: 0,  // outs added by this play
-    snapshot                    // available immediately for synchronous handlers
+    isOutOnPlay: 0,
+    snapshot
   };
 
   switch (playType) {
@@ -744,12 +796,14 @@ function applyRunnerMovements(moves, ctx, batterEndsBase) {
 // Fielder picker modal
 // =========================================================
 let fielderPickerCb = null;
+let fielderCancelCb = null;
 let fielderSequence = [];
 let fielderPlayType = null;
 
-function openFielderPicker(playType, cb) {
+function openFielderPicker(playType, cb, cancelCb) {
   fielderPlayType = playType;
   fielderPickerCb = cb;
+  fielderCancelCb = cancelCb || null;
   fielderSequence = [];
 
   // Single-fielder plays (just tap one)
@@ -825,6 +879,11 @@ function setupFielderModal() {
   document.getElementById('fielderCancel').addEventListener('click', () => {
     document.getElementById('fielderModal').classList.add('hidden');
     fielderPickerCb = null;
+    if (fielderCancelCb) {
+      const cb = fielderCancelCb;
+      fielderCancelCb = null;
+      cb();
+    }
   });
 
   document.getElementById('fielderConfirm').addEventListener('click', () => {
@@ -833,6 +892,7 @@ function setupFielderModal() {
       return;
     }
     document.getElementById('fielderModal').classList.add('hidden');
+    fielderCancelCb = null;
     if (fielderPickerCb) {
       const cb = fielderPickerCb;
       fielderPickerCb = null;
@@ -934,7 +994,16 @@ function baseLabel(base) {
 function setupRunnerModal() {
   document.getElementById('runnerCancel').addEventListener('click', () => {
     document.getElementById('runnerModal').classList.add('hidden');
+    // Some play handlers (groundout, flyout, sac, DP) mutate state
+    // before opening this modal. On cancel, revert to the pre-play
+    // snapshot so the user can re-pick the play cleanly.
+    if (runnerCurrentCtx && runnerCurrentCtx.snapshot) {
+      try { state = JSON.parse(runnerCurrentCtx.snapshot); } catch (e) {}
+    }
     runnerCb = null;
+    inProgressPlay = false;
+    save();
+    renderGame();
   });
   document.getElementById('runnerConfirm').addEventListener('click', () => {
     document.getElementById('runnerModal').classList.add('hidden');
@@ -963,7 +1032,6 @@ function setupRunnerModal() {
 // Finalization, log, half-inning advance
 // =========================================================
 function finishHalfAdvance(ctx) {
-  // Add to log
   state.log.push({
     inning: state.inning,
     half: state.half,
@@ -977,17 +1045,16 @@ function finishHalfAdvance(ctx) {
     outsAfter: state.outs
   });
 
-  // Advance batter (always, after a PA completes)
   advanceBatter();
 
-  // Check if half-inning ended
   if (state.outs >= 3) {
-    // Add LOB
     const lob = (state.bases[1] ? 1 : 0) + (state.bases[2] ? 1 : 0) + (state.bases[3] ? 1 : 0);
     state.teamStats[battingTeam()].LOB += lob;
     endHalfInning();
   }
 
+  // Play complete — release the in-progress lock and persist the new state.
+  inProgressPlay = false;
   save();
   renderGame();
 }
@@ -1724,6 +1791,36 @@ function escapeHtml(s) {
 // =========================================================
 // Boot
 // =========================================================
+
+// Wake lock: keep the screen awake while a game is in progress so
+// iOS / Android don't suspend the tab.
+let wakeLock = null;
+async function acquireWakeLock() {
+  try {
+    if ('wakeLock' in navigator && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { /* unsupported or denied; safe to ignore */ }
+}
+
+function setupAutoSave() {
+  // Save before the page is hidden (covers iOS background, tab switch, etc.).
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') save();
+    else if (state && state.setupComplete && !wakeLock) acquireWakeLock();
+  });
+  // pagehide is the most reliable "I'm leaving" event on iOS.
+  window.addEventListener('pagehide', save);
+  // Best-effort save on desktop close/reload.
+  window.addEventListener('beforeunload', save);
+
+  // Periodic safety-net save every 5 seconds while a game is live.
+  setInterval(() => {
+    if (state && state.setupComplete && !state.gameOver) save();
+  }, 5000);
+}
+
 function boot() {
   const saved = load();
   state = saved || freshState();
@@ -1732,10 +1829,12 @@ function boot() {
   setupFielderModal();
   setupRunnerModal();
   wireGameButtons();
+  setupAutoSave();
 
   if (state.setupComplete) {
     showScreen('game');
     renderGame();
+    acquireWakeLock();
   } else {
     showScreen('setup');
   }
